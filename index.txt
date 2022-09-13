@@ -1,0 +1,83 @@
+var bleno = require('./lib/bleno');
+
+//module.exports = new Bleno();
+
+var util = require('util');
+//var bleno = require('@abandonware/bleno');
+//var bleno = require('Bleno');
+var name='Verifier';
+var serviceUuids = ['c11e71f7-80cd-4a72-aa2d-a0421918113a'];
+var serviceUuid = 'c11e71f7-80cd-4a72-aa2d-a0421918113a';
+var InvitationUuid = '6cbbf84b-fc1c-4f2c-ace8-cb89e33e76f2';
+
+var invitationCharacteristic = function() {
+    invitationCharacteristic.super_.call(this, {
+      uuid: InvitationUuid,
+      properties: ['read']
+    });
+};
+
+//util.inherits(invitationCharacteristic, BlenoCharacteristic);
+
+invitationCharacteristic.prototype.onReadRequest = function(offset, callback) {
+    var result = this.RESULT_SUCCESS;
+    //nonce = crypto.randomBytes(8).toString('hex'); //nonce is bouncing. Runs two more times after read
+    // this.nonce = nonce;
+    var data = new Buffer('This is an invitation');
+    
+    console.log(data.toString('utf-8'));
+    console.log("*****");
+  
+    if (offset > data.length) {
+      result = this.RESULT_INVALID_OFFSET;
+      data = null;
+    } else {
+      data = data.slice(offset);
+    }
+   
+    callback(result, data);
+};
+
+function VerifierService() {
+    VerifierService.super_.call(this, {
+      uuid: serviceUuid,
+      characteristics: [
+        new invitationCharacteristic()
+      ]
+    });
+  }
+  
+//util.inherits(VerifierService, BlenoPrimaryService);
+
+bleno.on('stateChange', function(state) {
+    console.log('on -> stateChange: ' + state + ', address = ' + bleno.address);
+  
+    if (state === 'poweredOn') {
+      bleno.startAdvertising(name, serviceUuids);
+    } else {
+      bleno.stopAdvertising();
+    }
+});
+
+bleno.on('mtuChange', function(mtu) {
+    console.log('on -> mtuChange: ' + mtu);
+});
+  
+bleno.on('advertisingStart', function(error) {
+    console.log('on -> advertisingStart: ' + (error ? 'error ' + error : 'success'));
+  
+    if (!error) {
+      bleno.setServices([
+        new VerifierService()
+      ]);
+    }
+});
+  
+bleno.on('advertisingStop', function() {
+    console.log('on -> advertisingStop');
+});
+  
+bleno.on('servicesSet', function(error) {
+    console.log('on -> servicesSet: ' + (error ? 'error ' + error : 'success'));
+});
+  
